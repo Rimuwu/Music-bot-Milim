@@ -1,0 +1,2 @@
+nextcord==2.0.0a6
+lavaplayer==1.0.5a
