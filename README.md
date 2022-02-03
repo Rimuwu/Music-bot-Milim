@@ -9,7 +9,7 @@
 
 - В файле config.py вставьте токен для бота, и id ролей
 > - bot_token : str = https://discord.com/developers/applications
-> - dj_roles : int = id ролей которые могут управлять музыкой
+> - dj_roles : array (int) = id ролей которые могут управлять музыкой
 
 ### Для связи
 - В [личные сообщения](https://discord.com/channels/@me/323512096350535680)
