@@ -19,6 +19,7 @@ lavalink = lavaplayer.LavalinkClient(
     password="Raccoon",
     user_id=927893555366731836
 )
+bot.remove_command( "help" )
 
 message = None
 vol = 50
@@ -26,9 +27,10 @@ last_q = []
 rep = False
 pas = '▶'
 author = None
+rec = False
 
 async def embed(end = True):
-    global volume, last_q, rep, pas
+    global volume, last_q, rep, pas, author, rec, PREFIX, message
     if last_q == []:
         end = False
 
@@ -36,30 +38,38 @@ async def embed(end = True):
         track = last_q[0]
 
         embed = discord.Embed(
-            description= f'🎶 | **[{track.title}]({track.uri})**',
+            description= f'**[`{track.title}`]({track.uri})**',
             color=0x96516a)
-        embed.add_field(name = 'Информация о треке', value =
+        embed.add_field(name = '🎶 | Информация о треке', value =
             f"**Трек:** {track.title}\n"
             f"**Автор:** {track.author}\n"
             f"**Громкость:** {vol}%\n"
             f'**Продолжительность:** {functions.time_end(track.length / 1000)}\n'
             f'**Повтор:** {rep}\n'
-            f'**Статус:** {pas}\n'.replace("True", 'Включён').replace("False", 'Отключён')
+            f'**Статус:** {pas}\n'
+            f'**Заказал**: {author.mention}'.replace("True", 'Включён').replace("False", 'Отключён')
             )
 
         tracks = [f"**{i + 1}.** `{t.title}`" for (i, t) in enumerate(last_q)]
+        embed.add_field(name = '🎞 | Очередь', value = "\n".join(tracks))
 
-        embed.add_field(name = 'Очередь', value = "\n".join(tracks))
-        return embed
+        embed.add_field(name = '🎨 | Команды', value = f"Пропишите **{PREFIX}mhelp** для получения команд!" , inline = False)
 
     if end == False or last_q == []:
-
         embed = discord.Embed(
             description= f'Воспроизведение прервано / закончено',
             color=0x96516a)
-        return embed
+        try:
+            await message.clear_reactions()
+        except:
+            pass
 
+    await message.edit(view = None, embed = embed)
 
+    if rec == False:
+        rec = True
+        for i in ['▶', '⏸', '🔄', '🔀', '🔉', '🔊', '⏩', '⏹️']:
+            await message.add_reaction(i)
 
 @bot.event
 async def on_ready():
@@ -70,11 +80,11 @@ async def on_ready():
 
 @tasks.loop(seconds = 15)
 async def change_stats():
-    await bot.change_presence( status = discord.Status.online, activity = discord.Game(name = f"🎵 | Музыка? +play {random.choice(['Shape of you', 'Me Too', 'Bella Cio', 'Bella Poarch'])}"))
+    await bot.change_presence( status = discord.Status.online, activity = discord.Game(name = f"🎵 | Музыка? +play {random.choice(['Shape of you', 'Me Too', 'Bella Cio', 'Bella Poarch', 'Go Kitty Go'])}"))
 
 @tasks.loop(seconds = 0.5)
 async def task():
-    global last_q, message, vol, rep, pas
+    global last_q, message, vol, rep, pas, author, rec
     # print(time.time())
 
     if message != None:
@@ -92,10 +102,10 @@ async def task():
                     if last_q == []:
                         last_q = None
                     else:
-                        await message.edit(embed = await embed())
+                        await embed()
 
         if last_q == None:
-            await message.edit(embed = await embed(False))
+            await embed(False)
 
             message = None
             vol = 50
@@ -103,6 +113,7 @@ async def task():
             rep = False
             pas = '▶'
             author = None
+            rec = False
 
             guild = bot.get_guild(601124004224434357)
             await guild.change_voice_state(channel=None)
@@ -110,21 +121,29 @@ async def task():
 
 
 @bot.command()
-async def leave(ctx):
+async def mhelp(ctx):
     global author
-    if ctx.author.voice == None:
-        await ctx.send("Зайдите в войс!")
-        return
+    embed = discord.Embed(
+        description= f'🎶 | **Помощь**',
+        color=0x96516a)
+    embed.add_field(name = '👁‍🗨 | Команды', value =
+                f'**{ctx.prefix}mhelp** - команда помощи\n'
+                f'**{ctx.prefix}play (url / music_name)** - включить трек / добавить в очередь\n'
+                f'**{ctx.prefix}leave - отключить бота от войса**\n'
+                f'**{ctx.prefix}pause** - поставить на паузы\n'
+                f'**{ctx.prefix}resume** - снять с паузы\n'
+                f'**{ctx.prefix}stop** - остановить воспроизведение\n'
+                f'**{ctx.prefix}skip** - пропустить играющий трек\n'
+                f'**{ctx.prefix}queue** - показать очередь треков\n'
+                f'**{ctx.prefix}volume (1 - 200)** - установить громкость\n'
+                f'**{ctx.prefix}seek (sec)** - установка позиции трека\n'
+                f'**{ctx.prefix}shuffle** - перемешать очередь\n'
+                f'**{ctx.prefix}repeat** - включить повтор трека / очереди\n'
+    )
     if author != None:
-        if functions.roles_check(ctx.author, ctx.author.guild.id, author) == False:
-            await ctx.send("Вы не являетесь диджеем или заказчиком музыки!")
-            return
-    else:
-        return
-
-    await ctx.guild.change_voice_state(channel=None)
-    await lavalink.wait_for_remove_connection(ctx.guild.id)
-    await ctx.message.add_reaction('✅')
+        embed.add_field(name = '👁 | Статус', inline = False, value = f'Могу я в данный момент управлять треками?\nСтатус: {functions.roles_check(ctx.author, ctx.author.guild.id, author)}'.replace('True', '**Да**').replace('False', '**Нет**')
+    )
+    await ctx.send(embed = embed)
 
 @bot.command()
 async def play(ctx, *, query: str):
@@ -165,13 +184,12 @@ async def play(ctx, *, query: str):
             if author == None:
                 author = ctx.author
 
-            await message.edit(view = None, embed = await embed())
+            await embed()
 
 
         class Dropdown(discord.ui.Select):
             def __init__(self, ctx, msg, options, placeholder, min_values, max_values:int, rem_args):
                 global mes
-                #options.append(discord.SelectOption(label=f''))
 
                 super().__init__(placeholder=placeholder, min_values=min_values, max_values=max_values, options=options)
 
@@ -197,6 +215,10 @@ async def play(ctx, *, query: str):
 
             async def on_timeout(self):
                 await msg.edit(view = None)
+
+
+            async def on_error(self, error, item, interaction):
+                pass
 
         ntl = []
         for tt in tracks:
@@ -230,6 +252,22 @@ async def play(ctx, *, query: str):
 
             await msg.edit(view=DropdownView(ctx, msg, options = options, placeholder = 'Сделайте выбор...', min_values = 1, max_values=1, timeout = 200.0, rem_args = [message]))
 
+@bot.command()
+async def leave(ctx):
+    global author
+    if ctx.author.voice == None:
+        await ctx.send("Зайдите в войс!")
+        return
+    if author != None:
+        if functions.roles_check(ctx.author, ctx.author.guild.id, author) == False:
+            await ctx.send("Вы не являетесь диджеем или заказчиком музыки!")
+            return
+    else:
+        return
+
+    await ctx.guild.change_voice_state(channel=None)
+    await lavalink.wait_for_remove_connection(ctx.guild.id)
+    await ctx.message.add_reaction('✅')
 
 
 @bot.command()
@@ -247,7 +285,7 @@ async def pause(ctx):
         return
     await lavalink.pause(ctx.guild.id, True)
     pas = '⏸'
-    await message.edit(embed = await embed())
+    await embed()
     await ctx.message.add_reaction('✅')
 
 
@@ -266,7 +304,7 @@ async def resume(ctx):
         return
     await lavalink.pause(ctx.guild.id, False)
     pas = '▶'
-    await message.edit(embed = await embed())
+    await embed()
     await ctx.message.add_reaction('✅')
 
 @bot.command()
@@ -288,27 +326,21 @@ async def stop(ctx):
 async def skip(ctx):
     global message, last_q, rep
     global author
-    if ctx.author.voice == None:
-        await ctx.send("Зайдите в войс!")
-        return
-    if author != None:
-        if functions.roles_check(ctx.author, ctx.author.guild.id, author) == False:
-            await ctx.send("Вы не являетесь диджеем или заказчиком музыки!")
-            return
-    else:
-        return
-    await lavalink.skip(ctx.guild.id)
-    qu = await lavalink.queue(ctx.guild.id)
-    if rep != True:
-        last_q.pop(0)
     if rep == True:
-        last_q = qu.copy()
-    if last_q == []:
-        last_q = None
-        await message.edit(embed = await embed(False))
+        pass
     else:
-        await message.edit(embed = await embed())
-    await ctx.message.add_reaction('✅')
+        if ctx.author.voice == None:
+            await ctx.send("Зайдите в войс!")
+            return
+        if author != None:
+            if functions.roles_check(ctx.author, ctx.author.guild.id, author) == False:
+                await ctx.send("Вы не являетесь диджеем или заказчиком музыки!")
+                return
+        else:
+            return
+
+        await lavalink.skip(ctx.guild.id)
+        await ctx.message.add_reaction('✅')
 
 @bot.command()
 async def queue(ctx):
@@ -331,12 +363,12 @@ async def volume(ctx, volume: int):
             return
     else:
         return
-    if volume > 200:
-        await ctx.send("Нельзя установить громкость больше 200%!")
+    if volume > 200 or volume < 1:
+        await ctx.send("Нельзя установить громкость больше 200% или меньше 1%!")
     else:
         await lavalink.volume(ctx.guild.id, volume)
         vol = volume
-        await message.edit(embed = await embed())
+        await embed()
         await ctx.message.add_reaction('✅')
 
 @bot.command()
@@ -354,15 +386,9 @@ async def seek(ctx, seconds: int):
     await lavalink.seek(ctx.guild.id, seconds*1000)
     await ctx.message.add_reaction('✅')
 
-# @bot.command()
-# async def shuffle(ctx):
-#     await lavalink.shuffle(ctx.guild.id)
-#     await message.edit(embed = await embed())
-#     await ctx.message.add_reaction('✅')
-
 @bot.command()
-async def clear(ctx):
-    global author
+async def shuffle(ctx):
+    global last_q, rep, author
     if ctx.author.voice == None:
         await ctx.send("Зайдите в войс!")
         return
@@ -372,9 +398,15 @@ async def clear(ctx):
             return
     else:
         return
-    await lavalink.clear(ctx.guild.id)
-    await message.edit(embed = await embed())
-    await ctx.message.add_reaction('✅')
+
+    if rep == True:
+        await ctx.send("Отключите повтор!")
+    else:
+        i = await lavalink.shuffle(ctx.guild.id)
+        last_q = i.queue.copy()
+        await embed()
+        await ctx.message.add_reaction('✅')
+
 
 @bot.command()
 async def repeat(ctx):
@@ -396,7 +428,7 @@ async def repeat(ctx):
     else:
         await lavalink.repeat(ctx.guild.id, True)
         rep = True
-    await message.edit(embed = await embed())
+    await embed()
     await ctx.message.add_reaction('✅')
 
 
@@ -438,20 +470,101 @@ async def on_socket_raw_receive(data):
 
 @bot.event
 async def on_voice_state_update(member, before, after):
-    global author, message, vol, last_q, rep, pas
+    global last_q, message, vol, rep, pas, author, rec
     aut = author
     if aut != None:
-        guild = aut.guild
-        if len(aut.voice.channel.members) <= 1:
-            await guild.change_voice_state(channel=None)
+        if aut.id == member.id:
+            guild = aut.guild
 
-            message = None
-            vol = 50
-            last_q = []
-            rep = False
-            pas = '▶'
-            author = None
+            if guild.me.voice == None:
+                try:
+                    await guild.change_voice_state(channel=None)
 
+                    message = None
+                    vol = 50
+                    last_q = []
+                    rep = False
+                    pas = '▶'
+                    author = None
+                    rec = False
+                except:
+                    pass
+
+            else:
+                if len(guild.me.voice.channel.members) <= 1:
+                    await guild.change_voice_state(channel=None)
+
+                    message = None
+                    vol = 50
+                    last_q = []
+                    rep = False
+                    pas = '▶'
+                    author = None
+                    rec = False
+
+@bot.event
+async def on_raw_reaction_add(payload):
+    global last_q, message, vol, rep, pas, author, rec
+    if message != None:
+        if payload.member.bot == False:
+            if message.id == payload.message_id:
+                await message.remove_reaction(payload.emoji, payload.member)
+                if functions.roles_check(payload.member, payload.member.guild.id, author) == True:
+                    if payload.emoji.name in ['▶', '⏸', '🔄', '🔀', '🔉', '🔊', '⏩', '⏹️']:
+                        rec = payload.emoji.name
+                        if rec == '▶':
+
+                            await lavalink.pause(payload.member.guild.id, False)
+                            pas = '▶'
+
+                        elif rec == '⏸':
+
+                            await lavalink.pause(payload.member.guild.id, True)
+                            pas = '⏸'
+
+                        elif rec == '🔄':
+
+                            if rep == True:
+                                await lavalink.repeat(payload.member.guild.id, False)
+                                rep = False
+                            else:
+                                await lavalink.repeat(payload.member.guild.id, True)
+                                rep = True
+
+                        elif rec == '🔀':
+
+                            if rep == True:
+                                pass
+                            else:
+                                i = await lavalink.shuffle(payload.member.guild.id)
+                                last_q = i.queue.copy()
+
+                        elif rec == '🔉':
+                            if vol - 10 < 1:
+                                vol = 1
+                            else:
+                                vol -= 10
+
+                            await lavalink.volume(payload.member.guild.id, vol)
+
+                        elif rec == '🔊':
+
+                            if vol + 10 > 200:
+                                vol = 200
+                            else:
+                                vol += 10
+
+                            await lavalink.volume(payload.member.guild.id, vol)
+
+                        elif rec == '⏩':
+
+                            await lavalink.skip(payload.member.guild.id)
+
+                        elif rec == '⏹️':
+
+                            await lavalink.stop(payload.member.guild.id)
+
+                        await embed()
 
 lavalink.connect()
 bot.run(TOKEN)
