@@ -7,13 +7,10 @@ import pprint
 import asyncio
 import config
 
-
-
 class functions:
 
     @staticmethod
     def time_end(seconds:int, mini = False):
-
 
         mm = int(seconds//2592000)
         seconds -= mm*2592000
@@ -65,30 +62,3 @@ class functions:
                     return True
                 else:
                     return False
-
-    @staticmethod
-    async def reactions_check(bot, solutions: list, member: discord.Member, msg: discord.Message, clear:bool = False, timeout:float = 30.0):
-
-        def check(reaction, user):
-            nonlocal msg
-            return user.id == member.id and str(reaction.emoji) in solutions and reaction.message.id == msg.id
-
-        async def reackt():
-            try:
-                reaction, user = await bot.wait_for('reaction_add', timeout=timeout, check = check)
-            except asyncio.TimeoutError:
-                await msg.clear_reactions()
-                return 'Timeout'
-            else:
-                if reaction.emoji in solutions:
-                    if clear == False:
-                        await msg.remove_reaction(str(reaction.emoji), member)
-                    else:
-                        await msg.clear_reactions()
-
-                    return reaction
-
-        for x in solutions:
-            await msg.add_reaction(x)
-
-        return await reackt()
